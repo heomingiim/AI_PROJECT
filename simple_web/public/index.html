@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 이미지 분석기</title>
+    <style>
+        /* 미니멀 다크 모드 스타일 */
+        :root {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #bb86fc;
+            --input-bg: #2c2c2c;
+            --border-color: #333;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            border: 2px dashed var(--border-color);
+            display: inline-block;
+            padding: 20px;
+            cursor: pointer;
+            text-align: center;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+
+        .custom-file-upload:hover {
+            border-color: var(--accent-color);
+        }
+
+        #preview {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+            display: none;
+            margin-top: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            resize: none;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        /* 로딩 애니메이션 */
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+            font-style: italic;
+            color: var(--accent-color);
+        }
+
+        .dots::after {
+            content: '...';
+            display: inline-block;
+            width: 1em;
+            text-align: left;
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .result-section {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--input-bg);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result-item {
+            margin-bottom: 1rem;
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: var(--accent-color);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-content {
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI 이미지 분석기</h1>
+        
+        <div class="upload-section">
+            <label for="imageInput" class="custom-file-upload">
+                이미지 업로드 (클릭하여 선택)
+            </label>
+            <input type="file" id="imageInput" accept="image/*">
+            <img id="preview" alt="미리보기">
+            
+            <textarea id="questionInput" rows="3" placeholder="이미지에 대해 궁금한 점을 입력하세요."></textarea>
+            
+            <button id="analyzeBtn">분석하기</button>
+        </div>
+
+        <div id="loading" class="loading">
+            AI가 분석중입니다<span class="dots"></span>
+        </div>
+
+        <div id="resultSection" class="result-section">
+            <div class="result-item">
+                <span class="result-label">추출된 텍스트:</span>
+                <div id="ocrResult" class="result-content"></div>
+            </div>
+            <div class="result-item">
+                <span class="result-label">AI 답변:</span>
+                <div id="aiAnswer" class="result-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const preview = document.getElementById('preview');
+        const questionInput = document.getElementById('questionInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const resultSection = document.getElementById('resultSection');
+        const ocrResult = document.getElementById('ocrResult');
+        const aiAnswer = document.getElementById('aiAnswer');
+
+        // 이미지 선택 시 미리보기 처리
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 분석하기 버튼 클릭 이벤트
+        analyzeBtn.addEventListener('click', async () => {
+            const file = imageInput.files[0];
+            const question = questionInput.value;
+
+            if (!file) {
+                alert('이미지를 먼저 선택해주세요.');
+                return;
+            }
+
+            // UI 초기화 및 로딩 표시
+            resultSection.style.display = 'none';
+            loading.style.display = 'block';
+            analyzeBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('question', question);
+
+            try {
+                // Node.js 서버의 /analyze 엔드포인트로 요청
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.details || data.error || '서버 응답 오류');
+                }
+
+                // 결과 표시 (FastAPI의 응답 구조에 맞춰 조정)
+                ocrResult.textContent = "분석 완료"; // OCR 결과와 AI 답변이 result에 통합되어 있다면
+                aiAnswer.textContent = data.result || '답변을 생성할 수 없습니다.';
+                resultSection.style.display = 'block';
+            } catch (error) {
+                console.error('분석 중 오류:', error);
+                alert(`분석 중 오류가 발생했습니다: ${error.message}`);
+            } finally {
+                loading.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
