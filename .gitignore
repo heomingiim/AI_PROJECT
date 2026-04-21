@@ -1,0 +1,16 @@
+# Security
+.env
+config.py
+__pycache__/
+
+
+# 가상환경
+venv/
+.venv/
+
+# 데이터셋
+dataset/
+*.jpg
+*.png
+*.jpeg
+*.gif
