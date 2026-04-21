@@ -4,3 +4,5 @@ python-multipart
 python-dotenv
 ollama
 openai
+mysql-connector-python
+nest_asyncio
