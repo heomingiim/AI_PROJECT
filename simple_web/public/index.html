@@ -242,8 +242,13 @@
                     throw new Error(data.details || data.error || '서버 응답 오류');
                 }
 
-                // 결과 표시 (FastAPI의 응답 구조에 맞춰 조정)
-                ocrResult.textContent = "분석 완료"; // OCR 결과와 AI 답변이 result에 통합되어 있다면
+                // FastAPI의 응답 성공 여부 확인
+                if (data.success === false) {
+                    throw new Error(data.message || 'AI 분석 실패');
+                }
+
+                // 결과 표시
+                ocrResult.textContent = "분석 완료"; 
                 aiAnswer.textContent = data.result || '답변을 생성할 수 없습니다.';
                 resultSection.style.display = 'block';
             } catch (error) {

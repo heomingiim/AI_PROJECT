@@ -6,3 +6,5 @@ ollama
 openai
 mysql-connector-python
 nest_asyncio
+pandas
+numpy

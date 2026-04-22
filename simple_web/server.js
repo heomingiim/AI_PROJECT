@@ -38,18 +38,34 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
         });
         formData.append('question', question || '');
 
-        // FastAPI 서버(http://localhost:8000/analyze)로 데이터 전송
-        const response = await axios.post('http://localhost:8000/analyze', formData, {
+        // FastAPI 서버(http://127.0.0.1:8000/analyze)로 데이터 전송
+        console.log('FastAPI 서버로 요청 전송 중...');
+        const response = await axios.post('http://127.0.0.1:8000/analyze', formData, {
             headers: {
                 ...formData.getHeaders(),
             },
+            timeout: 60000, // 60초 타임아웃 설정
         });
 
+        console.log('FastAPI 서버로부터 응답 수신 성공');
         // FastAPI로부터 받은 결과를 클라이언트에 그대로 전달
         res.json(response.data);
     } catch (error) {
-        const errorDetail = error.response ? JSON.stringify(error.response.data) : error.message;
-        console.error('FastAPI 서버 연동 오류:', errorDetail);
+        let errorDetail = '';
+        if (error.response) {
+            // 서버가 응답을 반환했지만 2xx 범위를 벗어남
+            errorDetail = JSON.stringify(error.response.data);
+            console.error('FastAPI 서버 오류 응답:', error.response.status, errorDetail);
+        } else if (error.request) {
+            // 요청이 전송되었지만 응답을 받지 못함
+            errorDetail = 'FastAPI 서버로부터 응답이 없습니다. 서버가 실행 중인지 확인하세요.';
+            console.error('FastAPI 서버 응답 없음:', error.message);
+        } else {
+            // 요청 설정 중에 문제가 발생함
+            errorDetail = error.message;
+            console.error('요청 설정 오류:', error.message);
+        }
+        
         res.status(500).json({ 
             error: '서버 분석 중 오류가 발생했습니다.',
             details: errorDetail 
